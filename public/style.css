@@ -63,6 +63,33 @@ header {
 }
 .btn-danger:hover { background: #dc2626; }
 
+.btn-buy {
+  background: #22c55e;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 16px;
+  letter-spacing: 0.03em;
+}
+.btn-buy:hover { background: #16a34a; }
+
+.btn-sold {
+  background: #e5e7eb;
+  color: #9ca3af;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: not-allowed;
+  margin-top: 16px;
+}
+
 .btn-full { width: 100%; padding: 14px; font-size: 1rem; }
 
 .btn-back {
@@ -142,10 +169,37 @@ main {
   cursor: pointer;
   transition: box-shadow 0.2s, transform 0.1s;
   padding: 16px;
+  position: relative;
 }
 .item-card:hover {
   box-shadow: 0 4px 16px rgba(59,130,246,0.12);
   transform: translateY(-2px);
+}
+.item-card.sold {
+  opacity: 0.6;
+}
+
+/* 판매완료 뱃지 */
+.sold-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #6b7280;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.sold-banner {
+  display: inline-block;
+  background: #6b7280;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
 }
 
 .item-category-badge {

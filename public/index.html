@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MarketInSchool - 교내 중고거래</title>
   <link rel="stylesheet" href="style.css" />
+  <script src="https://js.tosspayments.com/v2/standard"></script>
 </head>
 <body>
 
@@ -133,7 +134,8 @@
       empty.classList.add('hidden');
 
       grid.innerHTML = items.map(item => `
-        <div class="item-card" onclick="showDetail(${item.id})">
+        <div class="item-card ${item.sold ? 'sold' : ''}" onclick="showDetail(${item.id})">
+          ${item.sold ? '<div class="sold-badge">판매완료</div>' : ''}
           <div class="item-category-badge">${item.category}</div>
           <div class="item-info">
             <p class="item-title">${escapeHtml(item.title)}</p>
@@ -200,8 +202,13 @@
       if (!res.ok) { alert('상품 정보를 불러올 수 없습니다.'); return; }
       const item = await res.json();
 
+      const buyBtn = item.sold
+        ? `<button class="btn-sold btn-full" disabled>✅ 판매완료된 상품입니다</button>`
+        : `<button class="btn-buy btn-full" onclick="buyItem(${item.id}, ${item.price}, '${escapeHtml(item.title).replace(/'/g,"\\'")}')">💳 바로 구매하기</button>`;
+
       document.getElementById('detail-content').innerHTML = `
         <div class="detail-header">
+          ${item.sold ? '<div class="sold-banner">판매완료</div>' : ''}
           <span class="item-category-badge">${item.category}</span>
           <h2>${escapeHtml(item.title)}</h2>
           <p class="detail-date">${new Date(item.createdAt).toLocaleDateString('ko-KR')}</p>
@@ -215,9 +222,33 @@
           <h3>📞 연락처</h3>
           <p class="contact-value">${escapeHtml(item.contact)}</p>
         </div>
-        <button class="btn-danger btn-full" onclick="deleteItem(${item.id})">🗑 삭제하기</button>
+        ${buyBtn}
+        <button class="btn-danger btn-full" style="margin-top:10px" onclick="deleteItem(${item.id})">🗑 삭제하기</button>
       `;
       showPage('page-detail');
+    }
+
+    // ───── 결제 ─────
+    async function buyItem(itemId, price, title) {
+      const tossPayments = TossPayments('test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq');
+      const customerKey = 'student_' + Math.random().toString(36).slice(2, 10);
+      const orderId = `order_${itemId}_${Date.now()}`;
+
+      try {
+        const payment = tossPayments.payment({ customerKey });
+        await payment.requestPayment({
+          method: '카드',
+          amount: { currency: 'KRW', value: price },
+          orderId,
+          orderName: title,
+          successUrl: window.location.origin + '/payment/success',
+          failUrl: window.location.origin + '/payment/fail',
+        });
+      } catch (err) {
+        if (err.code !== 'USER_CANCEL') {
+          alert('결제 오류: ' + (err.message || '알 수 없는 오류'));
+        }
+      }
     }
 
     async function deleteItem(id) {

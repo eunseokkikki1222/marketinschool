@@ -5,6 +5,9 @@ const multer = require('multer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Toss Payments 테스트 시크릿 키 (실서비스 시 환경변수로 교체)
+const TOSS_SECRET_KEY = process.env.TOSS_SECRET_KEY || 'test_sk_zXLkKEypNArWmo50nX3lmeaxYG5R';
+
 // 인메모리 상품 데이터
 let items = [
   {
@@ -14,6 +17,7 @@ let items = [
     price: 10000,
     contact: '010-1234-5678',
     category: '도서',
+    sold: false,
     createdAt: new Date('2026-06-01').toISOString(),
   },
   {
@@ -23,6 +27,7 @@ let items = [
     price: 350000,
     contact: '카카오톡 ID: school123',
     category: '전자기기',
+    sold: false,
     createdAt: new Date('2026-06-10').toISOString(),
   },
   {
@@ -32,6 +37,7 @@ let items = [
     price: 80000,
     contact: '010-9876-5432',
     category: '기타',
+    sold: false,
     createdAt: new Date('2026-06-15').toISOString(),
   },
 ];
@@ -81,6 +87,7 @@ app.post('/api/items', upload.none(), (req, res) => {
     price: parseInt(price),
     contact: contact.trim(),
     category: category || '기타',
+    sold: false,
     createdAt: new Date().toISOString(),
   };
   items.unshift(newItem);
@@ -93,6 +100,54 @@ app.delete('/api/items/:id', (req, res) => {
   if (idx === -1) return res.status(404).json({ error: '상품을 찾을 수 없습니다.' });
   items.splice(idx, 1);
   res.json({ success: true });
+});
+
+// ── 결제 ──────────────────────────────────────────────
+
+// Toss Payments 결제 승인 확인
+app.post('/api/payment/confirm', async (req, res) => {
+  const { paymentKey, orderId, amount } = req.body;
+  if (!paymentKey || !orderId || !amount) {
+    return res.status(400).json({ error: '결제 정보가 올바르지 않습니다.' });
+  }
+
+  try {
+    const authHeader = 'Basic ' + Buffer.from(TOSS_SECRET_KEY + ':').toString('base64');
+    const tossRes = await fetch('https://api.tosspayments.com/v1/payments/confirm', {
+      method: 'POST',
+      headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentKey, orderId, amount: parseInt(amount) }),
+    });
+
+    const tossData = await tossRes.json();
+
+    if (!tossRes.ok) {
+      return res.status(400).json({ error: tossData.message || '결제 승인 실패' });
+    }
+
+    // orderId 형식: order_<itemId>_<timestamp>
+    const itemIdMatch = orderId.match(/^order_(\d+)_/);
+    if (itemIdMatch) {
+      const itemId = parseInt(itemIdMatch[1]);
+      const item = items.find(i => i.id === itemId);
+      if (item) item.sold = true;
+    }
+
+    res.json({ success: true, payment: tossData });
+  } catch (err) {
+    console.error('결제 승인 오류:', err);
+    res.status(500).json({ error: '서버 오류가 발생했습니다.' });
+  }
+});
+
+// 결제 성공 페이지
+app.get('/payment/success', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'payment-success.html'));
+});
+
+// 결제 실패 페이지
+app.get('/payment/fail', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'payment-fail.html'));
 });
 
 app.listen(PORT, () => {

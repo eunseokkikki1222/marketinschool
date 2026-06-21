@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>결제 완료 - MarketInSchool</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif; background: #f5f6fa; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    .card { background: #fff; border-radius: 20px; padding: 48px 40px; text-align: center; max-width: 420px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,0.08); }
+    .icon { font-size: 4rem; margin-bottom: 16px; }
+    h1 { font-size: 1.6rem; color: #222; margin-bottom: 10px; }
+    .amount { font-size: 1.8rem; font-weight: 700; color: #3b82f6; margin: 16px 0; }
+    p { color: #666; font-size: 0.95rem; line-height: 1.6; margin-bottom: 8px; }
+    .info-box { background: #f8faff; border-radius: 12px; padding: 16px; margin: 20px 0; text-align: left; }
+    .info-row { display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 8px; color: #555; }
+    .info-row:last-child { margin-bottom: 0; }
+    .info-row strong { color: #222; }
+    .btn { display: inline-block; background: #3b82f6; color: #fff; text-decoration: none; border-radius: 10px; padding: 14px 32px; font-size: 1rem; font-weight: 600; margin-top: 8px; cursor: pointer; border: none; width: 100%; }
+    .btn:hover { background: #2563eb; }
+    .test-notice { background: #fef9ec; border: 1px solid #fcd34d; border-radius: 8px; padding: 10px 14px; margin-top: 16px; font-size: 0.8rem; color: #92400e; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🎉</div>
+    <h1>결제가 완료되었습니다!</h1>
+    <div class="amount" id="amount-display">-</div>
+
+    <div class="info-box">
+      <div class="info-row"><span>주문 번호</span><strong id="order-id">-</strong></div>
+      <div class="info-row"><span>결제 수단</span><strong id="pay-method">카드</strong></div>
+      <div class="info-row"><span>결제 상태</span><strong style="color:#22c55e">✅ 승인완료</strong></div>
+    </div>
+
+    <p>구매해주셔서 감사합니다!<br>판매자에게 연락해 거래를 완료해주세요.</p>
+
+    <div class="test-notice">
+      🧪 현재 <b>테스트 모드</b>로 실제 결제가 발생하지 않습니다.
+    </div>
+
+    <a class="btn" href="/" style="margin-top: 20px">🏠 메인으로 돌아가기</a>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const paymentKey = params.get('paymentKey');
+    const orderId    = params.get('orderId');
+    const amount     = params.get('amount');
+
+    document.getElementById('order-id').textContent = orderId ? orderId.substring(0, 24) + '...' : '-';
+    document.getElementById('amount-display').textContent = amount ? parseInt(amount).toLocaleString() + '원' : '-';
+
+    // 백엔드에 결제 승인 요청
+    if (paymentKey && orderId && amount) {
+      fetch('/api/payment/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentKey, orderId, amount }),
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('pay-method').textContent =
+            data.payment?.method || '카드';
+        }
+      })
+      .catch(() => {});
+    }
+  </script>
+</body>
+</html>
