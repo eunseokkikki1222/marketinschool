@@ -176,8 +176,17 @@
       });
 
       if (res.ok) {
+        const newItem = await res.json();
+        // 서버 응답의 새 상품을 즉시 로컬 배열에 추가 (새로고침 불필요)
+        allItems.unshift(newItem);
+        // 필터/검색 초기화 후 목록으로 이동
+        currentCategory = '전체';
+        document.getElementById('search-input').value = '';
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('.tab').classList.add('active');
+        showPage('page-list');
+        renderItems(allItems);
         alert('상품이 등록되었습니다! 🎉');
-        showList();
       } else {
         const data = await res.json();
         errEl.textContent = data.error || '등록에 실패했습니다.';
