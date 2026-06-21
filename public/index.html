@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MarketInSchool - 교내 중고거래</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- 헤더 -->
+  <header>
+    <div class="header-inner">
+      <h1 class="logo" onclick="showList()">🏫 MarketInSchool</h1>
+      <button class="btn-primary" onclick="showSellForm()">+ 판매 등록</button>
+    </div>
+  </header>
+
+  <!-- 메인 -->
+  <main>
+
+    <!-- ① 목록 페이지 -->
+    <section id="page-list">
+      <div class="search-bar">
+        <input id="search-input" type="text" placeholder="상품 검색..." oninput="filterItems()" />
+        <div class="category-tabs">
+          <button class="tab active" onclick="selectCategory('전체', this)">전체</button>
+          <button class="tab" onclick="selectCategory('도서', this)">📚 도서</button>
+          <button class="tab" onclick="selectCategory('전자기기', this)">💻 전자기기</button>
+          <button class="tab" onclick="selectCategory('의류', this)">👕 의류</button>
+          <button class="tab" onclick="selectCategory('식품', this)">🍱 식품</button>
+          <button class="tab" onclick="selectCategory('기타', this)">🗂 기타</button>
+        </div>
+      </div>
+      <div id="item-count" class="item-count"></div>
+      <div id="item-grid" class="item-grid"></div>
+      <div id="empty-state" class="empty-state hidden">
+        <p>😢 등록된 상품이 없습니다.</p>
+        <button class="btn-primary" onclick="showSellForm()">첫 번째 상품 등록하기</button>
+      </div>
+    </section>
+
+    <!-- ② 판매 등록 페이지 -->
+    <section id="page-sell" class="hidden">
+      <div class="form-container">
+        <button class="btn-back" onclick="showList()">← 뒤로</button>
+        <h2>상품 등록</h2>
+        <form id="sell-form" onsubmit="submitItem(event)">
+          <label>상품 이름 <span class="required">*</span></label>
+          <input type="text" id="f-title" placeholder="예) 미적분학 교재, 아이패드 9세대" required maxlength="50" />
+
+          <label>카테고리 <span class="required">*</span></label>
+          <select id="f-category">
+            <option value="도서">📚 도서</option>
+            <option value="전자기기">💻 전자기기</option>
+            <option value="의류">👕 의류</option>
+            <option value="식품">🍱 식품</option>
+            <option value="기타" selected>🗂 기타</option>
+          </select>
+
+          <label>가격 (원) <span class="required">*</span></label>
+          <input type="number" id="f-price" placeholder="0" min="0" required />
+
+          <label>상품 설명</label>
+          <textarea id="f-desc" placeholder="상품 상태, 거래 방법 등을 자유롭게 작성해주세요." rows="4" maxlength="500"></textarea>
+
+          <label>연락처 <span class="required">*</span></label>
+          <input type="text" id="f-contact" placeholder="예) 010-0000-0000 또는 카카오톡 ID" required />
+
+          <div id="form-error" class="form-error hidden"></div>
+          <button type="submit" class="btn-primary btn-full">등록하기</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ③ 상품 상세 페이지 -->
+    <section id="page-detail" class="hidden">
+      <div class="detail-container">
+        <button class="btn-back" onclick="showList()">← 목록으로</button>
+        <div id="detail-content"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    let currentCategory = '전체';
+    let allItems = [];
+
+    // ───── 페이지 전환 ─────
+    function showPage(id) {
+      ['page-list', 'page-sell', 'page-detail'].forEach(p => {
+        document.getElementById(p).classList.add('hidden');
+      });
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function showList() {
+      showPage('page-list');
+      loadItems();
+    }
+
+    function showSellForm() {
+      document.getElementById('sell-form').reset();
+      document.getElementById('form-error').classList.add('hidden');
+      showPage('page-sell');
+    }
+
+    // ───── 상품 목록 ─────
+    async function loadItems() {
+      const q = document.getElementById('search-input').value;
+      const params = new URLSearchParams();
+      if (currentCategory !== '전체') params.set('category', currentCategory);
+      if (q) params.set('q', q);
+
+      const res = await fetch('/api/items?' + params.toString());
+      allItems = await res.json();
+      renderItems(allItems);
+    }
+
+    function renderItems(items) {
+      const grid = document.getElementById('item-grid');
+      const empty = document.getElementById('empty-state');
+      const count = document.getElementById('item-count');
+
+      count.textContent = `총 ${items.length}개의 상품`;
+
+      if (items.length === 0) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      grid.innerHTML = items.map(item => `
+        <div class="item-card" onclick="showDetail(${item.id})">
+          <div class="item-category-badge">${item.category}</div>
+          <div class="item-info">
+            <p class="item-title">${escapeHtml(item.title)}</p>
+            <p class="item-price">${item.price.toLocaleString()}원</p>
+            <p class="item-date">${timeAgo(item.createdAt)}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function filterItems() {
+      loadItems();
+    }
+
+    function selectCategory(cat, el) {
+      currentCategory = cat;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      loadItems();
+    }
+
+    // ───── 상품 등록 ─────
+    async function submitItem(e) {
+      e.preventDefault();
+      const errEl = document.getElementById('form-error');
+      errEl.classList.add('hidden');
+
+      const body = {
+        title: document.getElementById('f-title').value,
+        category: document.getElementById('f-category').value,
+        price: document.getElementById('f-price').value,
+        description: document.getElementById('f-desc').value,
+        contact: document.getElementById('f-contact').value,
+      };
+
+      const res = await fetch('/api/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        alert('상품이 등록되었습니다! 🎉');
+        showList();
+      } else {
+        const data = await res.json();
+        errEl.textContent = data.error || '등록에 실패했습니다.';
+        errEl.classList.remove('hidden');
+      }
+    }
+
+    // ───── 상품 상세 ─────
+    async function showDetail(id) {
+      const res = await fetch(`/api/items/${id}`);
+      if (!res.ok) { alert('상품 정보를 불러올 수 없습니다.'); return; }
+      const item = await res.json();
+
+      document.getElementById('detail-content').innerHTML = `
+        <div class="detail-header">
+          <span class="item-category-badge">${item.category}</span>
+          <h2>${escapeHtml(item.title)}</h2>
+          <p class="detail-date">${new Date(item.createdAt).toLocaleDateString('ko-KR')}</p>
+        </div>
+        <div class="detail-price">💰 ${item.price.toLocaleString()}원</div>
+        <div class="detail-desc">
+          <h3>상품 설명</h3>
+          <p>${escapeHtml(item.description) || '설명 없음'}</p>
+        </div>
+        <div class="detail-contact">
+          <h3>📞 연락처</h3>
+          <p class="contact-value">${escapeHtml(item.contact)}</p>
+        </div>
+        <button class="btn-danger btn-full" onclick="deleteItem(${item.id})">🗑 삭제하기</button>
+      `;
+      showPage('page-detail');
+    }
+
+    async function deleteItem(id) {
+      if (!confirm('이 상품을 삭제하시겠습니까?')) return;
+      const res = await fetch(`/api/items/${id}`, { method: 'DELETE' });
+      if (res.ok) { alert('삭제되었습니다.'); showList(); }
+      else alert('삭제 실패');
+    }
+
+    // ───── 유틸 ─────
+    function escapeHtml(str) {
+      return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function timeAgo(iso) {
+      const diff = (Date.now() - new Date(iso)) / 1000;
+      if (diff < 60) return '방금 전';
+      if (diff < 3600) return `${Math.floor(diff/60)}분 전`;
+      if (diff < 86400) return `${Math.floor(diff/3600)}시간 전`;
+      return `${Math.floor(diff/86400)}일 전`;
+    }
+
+    // 초기 로드
+    loadItems();
+  </script>
+</body>
+</html>
