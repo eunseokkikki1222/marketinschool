@@ -1,7 +1,7 @@
 {
   "name": "marketinschool",
   "version": "1.0.0",
-  "description": "교내 중고거래 앱 MVP",
+  "description": "School second-hand trading app MVP",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
